@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumonest Frame - Digital Thank You Card & QR Generator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Hind Siliguri (for Bangla) & Quicksand / Playfair Display -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- QRCode.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Canvas Confetti for Celebration Effect -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Quicksand', 'Hind Siliguri', 'sans-serif'],
+                        serif: ['Playfair Display', 'Hind Siliguri', 'serif'],
+                        bangla: ['Hind Siliguri', 'sans-serif'],
+                    },
+                    colors: {
+                        skySoft: '#E0F2FE',
+                        skyPrimary: '#38BDF8',
+                        skyDark: '#0284C7',
+                        pinkSoft: '#FCE7F3',
+                        pinkPrimary: '#F472B6',
+                        pinkDark: '#DB2777',
+                    },
+                    animation: {
+                        'float': 'float 4s ease-in-out infinite',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-8px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #E0F2FE 0%, #FDF2F8 50%, #FCE7F3 100%);
+            min-height: 100vh;
+        }
+
+        /* Custom Glassmorphism */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1.5px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 20px 40px -15px rgba(244, 114, 182, 0.18), 0 10px 25px -10px rgba(56, 189, 248, 0.18);
+        }
+
+        /* Cute Envelope / Letter Paper Texture */
+        .letter-paper {
+            background-color: #fffbfc;
+            background-image: radial-gradient(#f9a8d4 0.6px, transparent 0.6px), radial-gradient(#7dd3fc 0.6px, #fffbfc 0.6px);
+            background-size: 24px 24px;
+            background-position: 0 0, 12px 12px;
+        }
+
+        /* QR Code Container Styling */
+        #qrcode img, #qrcode canvas {
+            margin: 0 auto;
+            border-radius: 12px;
+            padding: 8px;
+            background: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+</head>
+<body class="text-slate-700 antialiased selection:bg-pink-200 selection:text-pink-900">
+
+    <!-- Top Mode Switcher Bar (Helpful for Testing & Seller Use) -->
+    <div id="top-nav" class="w-full max-w-4xl mx-auto pt-4 px-4 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <span class="inline-block w-3 h-3 rounded-full bg-sky-400"></span>
+            <span class="inline-block w-3 h-3 rounded-full bg-pink-400"></span>
+            <span class="font-bold text-slate-700 tracking-wide text-sm sm:text-base">Lumonest Frame Studio</span>
+        </div>
+        <div class="flex gap-2">
+            <button id="btn-mode-creator" onclick="switchMode('creator')" class="px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all bg-gradient-to-r from-sky-400 to-pink-400 text-white shadow-sm">
+                QR বানান (Seller)
+            </button>
+            <button id="btn-mode-preview" onclick="switchMode('customer')" class="px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all bg-white/80 text-slate-600 hover:bg-white border border-pink-100">
+                কাস্টমার ভিউ (Preview)
+            </button>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW 1: SELLER QR GENERATOR STUDIO         -->
+    <!-- ========================================== -->
+    <main id="creator-view" class="max-w-4xl mx-auto px-4 py-6 sm:py-10">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-sky-600 via-purple-500 to-pink-600 bg-clip-text text-transparent">
+                Lumonest Frame কাস্টমার QR জেনারেটর
+            </h1>
+            <p class="text-slate-600 text-sm sm:text-base mt-2 font-bangla">
+                কাস্টমারের নাম এবং ছোট চিরকুট লিখে QR কোড ডাউনলোড করুন। স্ক্যান করলেই কাস্টমারের জন্য সুন্দর কার্ডটি খুলে যাবে!
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <!-- Left Side: Form Inputs -->
+            <div class="lg:col-span-7 glass-card rounded-3xl p-6 sm:p-8">
+                <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i data-lucide="sparkles" class="w-5 h-5 text-pink-500"></i>
+                    <span>কার্ডের তথ্য দিন</span>
+                </h2>
+
+                <div class="space-y-4">
+                    <!-- Customer Name -->
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5 font-bangla">
+                            কাস্টমারের নাম <span class="text-pink-500">*</span>
+                        </label>
+                        <input type="text" id="input-name" placeholder="যেমন: তাসনিয়া ইসলাম / Sadia Afrin" value="প্রিয় কাস্টমার"
+                            oninput="updateAll()"
+                            class="w-full px-4 py-3 rounded-2xl bg-white/90 border border-sky-200 focus:border-pink-400 focus:ring-4 focus:ring-pink-100 outline-none transition-all text-slate-800 font-bangla">
+                    </div>
+
+                    <!-- Chirkut / Short Letter -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1.5">
+                            <label class="block text-sm font-semibold text-slate-700 font-bangla">
+                                ছোট চিরকুট / মেসেজ <span class="text-pink-500">*</span>
+                            </label>
+                            <button type="button" onclick="setRandomQuote()" class="text-xs text-sky-600 hover:text-pink-600 font-semibold flex items-center gap-1 transition-colors">
+                                <i data-lucide="wand-2" class="w-3.5 h-3.5"></i> রেডিমেড চিরকুট
+                            </button>
+                        </div>
+                        <textarea id="input-note" rows="4" oninput="updateAll()"
+                            placeholder="কাস্টমারের জন্য ভালোবাসাপূর্ণ ছোট একটি নোট লিখুন..."
+                            class="w-full px-4 py-3 rounded-2xl bg-white/90 border border-sky-200 focus:border-pink-400 focus:ring-4 focus:ring-pink-100 outline-none transition-all text-slate-800 font-bangla leading-relaxed">Lumonest Frame থেকে কেনাকাটা করার জন্য আপনাকে অনেক অনেক ধন্যবাদ! আপনার এই সুন্দর পছন্দটি আমাদের পথচলাকে আরও অনুপ্রাণিত করে। আশা করি ফ্রেমটি আপনার ভীষণ ভালো লাগবে। আবারও দেখা হবে ইনশাআল্লাহ!</textarea>
+                    </div>
+
+                    <!-- Custom Logo Upload (Optional) -->
+                    <div class="pt-2 border-t border-pink-100">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5 font-bangla">
+                            আপনার পেজের লোগো (ঐচ্ছিক - ডিফল্ট সুন্দর লোগো দেওয়া আছে)
+                        </label>
+                        <div class="flex items-center gap-3">
+                            <label class="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-sky-50 hover:bg-sky-100 text-sky-700 font-semibold text-xs sm:text-sm border border-sky-200 transition-all">
+                                <i data-lucide="image-plus" class="w-4 h-4"></i>
+                                <span>নিজের লোগো আপলোড করুন</span>
+                                <input type="file" id="logo-upload" accept="image/*" class="hidden" onchange="handleLogoUpload(event)">
+                            </label>
+                            <button type="button" id="reset-logo-btn" onclick="resetLogo()" class="hidden text-xs text-pink-600 hover:underline font-semibold">
+                                ডিফল্ট লোগো ফিরিয়ে আনুন
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1 font-bangla">
+                            * নোট: কাস্টম ছবি আপলোড করলে তা এই ব্রাউজারে সেভ থাকবে, তবে QR কোড যেন সহজে স্ক্যান হয় সেজন্য QR লিংকে শুধু নাম ও চিরকুট যুক্ত থাকবে।
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Generated QR Code & Actions -->
+            <div class="lg:col-span-5 glass-card rounded-3xl p-6 sm:p-8 text-center flex flex-col items-center justify-between">
+                <div class="w-full">
+                    <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-sky-100 to-pink-100 text-pink-600 mb-2">
+                        Ready to Print & Share
+                    </span>
+                    <h3 class="text-lg font-bold text-slate-800">কাস্টমারের ইউনিক QR কোড</h3>
+                    <p class="text-xs text-slate-500 mt-0.5 font-bangla">মোবাইল ক্যামেরা দিয়ে স্ক্যান করলেই কার্ড ওপেন হবে</p>
+                </div>
+
+                <!-- QR Code Box -->
+                <div class="my-6 p-4 rounded-3xl bg-gradient-to-br from-sky-100 via-white to-pink-100 border-2 border-dashed border-pink-300 shadow-inner relative">
+                    <div id="qrcode" class="flex justify-center items-center min-h-[200px] min-w-[200px]"></div>
+                    <div class="mt-3 text-xs font-bold tracking-wider text-slate-600 uppercase">
+                        Lumonest Frame • Scan Me
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="w-full space-y-2.5">
+                    <button onclick="downloadStyledQRCard()" class="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-sky-500 to-pink-500 hover:from-sky-600 hover:to-pink-600 text-white font-bold text-sm sm:text-base shadow-lg shadow-pink-200/60 flex items-center justify-center gap-2 transition-all transform active:scale-95">
+                        <i data-lucide="download" class="w-5 h-5"></i>
+                        <span>QR স্টিকার ডাউনলোড করুন (PNG)</span>
+                    </button>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="copyShareLink()" class="py-2.5 px-3 rounded-2xl bg-white hover:bg-sky-50 text-sky-700 border border-sky-200 font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all">
+                            <i data-lucide="link" class="w-4 h-4"></i>
+                            <span id="copy-text">লিংক কপি করুন</span>
+                        </button>
+                        <button onclick="switchMode('customer')" class="py-2.5 px-3 rounded-2xl bg-pink-50 hover:bg-pink-100 text-pink-700 border border-pink-200 font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                            <span>কার্ডটি দেখুন</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========================================== -->
+    <!-- VIEW 2: CUSTOMER DIGITAL LANDING CARD      -->
+    <!-- (Opens automatically when QR is scanned)   -->
+    <!-- ========================================== -->
+    <section id="customer-view" class="hidden max-w-lg mx-auto px-4 py-6 sm:py-10">
+        <!-- Main Card Container -->
+        <div class="glass-card rounded-[2.2rem] overflow-hidden relative shadow-2xl border-2 border-white">
+            
+            <!-- Decorative Top Header Banner (Sky Blue to Pink Gradient) -->
+            <div class="h-36 bg-gradient-to-r from-sky-300 via-purple-200 to-pink-300 relative overflow-hidden">
+                <!-- Soft Decorative Circles -->
+                <div class="absolute -top-8 -left-8 w-32 h-32 rounded-full bg-white/30 blur-md"></div>
+                <div class="absolute top-6 right-6 w-20 h-20 rounded-full bg-pink-400/20 blur-sm"></div>
+                <div class="absolute bottom-2 left-1/4 w-12 h-12 rounded-full bg-sky-400/20"></div>
+                
+                <!-- Floating Sparkle Badge -->
+                <div class="absolute top-4 right-4 bg-white/80 backdrop-blur-md px-3 py-1 rounded-full text-[11px] font-bold text-pink-600 shadow-sm flex items-center gap-1">
+                    <i data-lucide="heart" class="w-3 h-3 fill-pink-500 text-pink-500"></i>
+                    <span>Thank You Note</span>
+                </div>
+            </div>
+
+            <!-- Page Logo (Centered Overlapping Banner) -->
+            <div class="relative px-6 pb-8 text-center">
+                <div class="-mt-16 mb-3 inline-block relative animate-float">
+                    <div class="w-28 h-28 rounded-full p-1.5 bg-gradient-to-tr from-sky-400 to-pink-400 shadow-xl mx-auto">
+                        <div id="logo-display-container" class="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+                            <!-- Default Custom SVG Logo for Lumonest Frame -->
+                            <svg id="default-svg-logo" viewBox="0 0 120 120" class="w-full h-full">
+                                <defs>
+                                    <linearGradient id="lumoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#38BDF8" />
+                                        <stop offset="100%" stop-color="#F472B6" />
+                                    </linearGradient>
+                                </defs>
+                                <circle cx="60" cy="60" r="56" fill="#FDF2F8" />
+                                <!-- Cute Frame Icon inside Logo -->
+                                <rect x="36" y="26" width="48" height="54" rx="8" fill="none" stroke="url(#lumoGrad)" stroke-width="5"/>
+                                <rect x="43" y="33" width="34" height="40" rx="4" fill="#E0F2FE" opacity="0.6"/>
+                                <!-- Sparkle / Heart inside Frame -->
+                                <path d="M60 44 L62.5 50.5 L69 53 L62.5 55.5 L60 62 L57.5 55.5 L51 53 L57.5 50.5 Z" fill="#EC4899"/>
+                                <text x="60" y="96" text-anchor="middle" font-family="Quicksand, sans-serif" font-weight="700" font-size="11.5" fill="#0284C7">LUMONEST</text>
+                                <text x="60" y="108" text-anchor="middle" font-family="Quicksand, sans-serif" font-weight="700" font-size="9.5" fill="#DB2777">FRAME</text>
+                            </svg>
+                            <!-- Uploaded Image Fallback -->
+                            <img id="custom-img-logo" src="" alt="Lumonest Frame Logo" class="hidden w-full h-full object-cover">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 1. FIRST: CUSTOMER'S NAME (প্রথমে কাস্টমারের নাম) -->
+                <div class="mt-2 mb-5">
+                    <p class="text-xs uppercase tracking-[0.2em] text-sky-600 font-bold mb-1">
+                        শুভেচ্ছা ও ভালোবাসা
+                    </p>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-slate-800 font-bangla">
+                        প্রিয় <span id="display-customer-name" class="bg-gradient-to-r from-sky-600 to-pink-600 bg-clip-text text-transparent">প্রিয় কাস্টমার</span>,
+                    </h1>
+                </div>
+
+                <!-- 2. SECOND: THE CHIRKUT / LETTER (তারপর ছোট চিরকুট / লেটার) -->
+                <div class="letter-paper rounded-3xl p-6 sm:p-7 border border-pink-200/80 shadow-sm text-left relative mb-7">
+                    <!-- Decorative Quote Icon -->
+                    <div class="absolute -top-3.5 left-6 bg-gradient-to-r from-sky-400 to-pink-400 text-white p-1.5 rounded-xl shadow-sm">
+                        <i data-lucide="mail-open" class="w-4 h-4"></i>
+                    </div>
+                    
+                    <p id="display-customer-note" class="text-slate-700 text-base sm:text-[17px] leading-relaxed font-bangla whitespace-pre-line">
+                        Lumonest Frame থেকে কেনাকাটা করার জন্য আপনাকে অনেক অনেক ধন্যবাদ! আপনার এই সুন্দর পছন্দটি আমাদের পথচলাকে আরও অনুপ্রাণিত করে। আশা করি ফ্রেমটি আপনার ভীষণ ভালো লাগবে। আবারও দেখা হবে ইনশাআল্লাহ!
+                    </p>
+
+                    <div class="mt-4 pt-3 border-t border-pink-100 flex justify-between items-center text-xs text-slate-500 font-bangla">
+                        <span>আন্তরিক ভালোবাসায়,</span>
+                        <span class="font-bold text-pink-600 text-sm font-sans">— Lumonest Frame টিম</span>
+                    </div>
+                </div>
+
+                <!-- 3. THIRD: BRAND DETAILS, WHATSAPP, INSTAGRAM & FACEBOOK -->
+                <div class="bg-gradient-to-br from-sky-50/90 to-pink-50/90 rounded-3xl p-5 border border-white shadow-inner space-y-3">
+                    <div class="text-center pb-2 border-b border-pink-100/80">
+                        <span class="text-[11px] font-bold uppercase tracking-widest text-slate-400">আমাদের সাথে যুক্ত থাকুন</span>
+                        <h2 class="text-xl font-extrabold bg-gradient-to-r from-sky-600 to-pink-600 bg-clip-text text-transparent mt-0.5">
+                            Lumonest Frame
+                        </h2>
+                    </div>
+
+                    <!-- WhatsApp Direct Button -->
+                    <a href="https://wa.me/8801865587941" target="_blank" rel="noopener noreferrer"
+                       class="flex items-center justify-between w-full p-3.5 rounded-2xl bg-white hover:bg-sky-50 border border-sky-100 shadow-sm transition-all group">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i data-lucide="phone-call" class="w-5 h-5"></i>
+                            </div>
+                            <div class="text-left">
+                                <p class="text-[11px] font-semibold text-slate-400 uppercase">WhatsApp / যোগাযোগ</p>
+                                <p class="text-sm sm:text-base font-bold text-slate-800 tracking-wide">01865587941</p>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-sky-100 text-sky-700 group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                            মেসেজ দিন
+                        </span>
+                    </a>
+
+                    <!-- Instagram Direct Button -->
+                    <a href="https://instagram.com/lumo_nest01" target="_blank" rel="noopener noreferrer"
+                       class="flex items-center justify-between w-full p-3.5 rounded-2xl bg-white hover:bg-pink-50 border border-pink-100 shadow-sm transition-all group">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i data-lucide="instagram" class="w-5 h-5"></i>
+                            </div>
+                            <div class="text-left">
+                                <p class="text-[11px] font-semibold text-slate-400 uppercase">Instagram পেজ</p>
+                                <p class="text-sm sm:text-base font-bold text-slate-800">@lumo_nest01</p>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-pink-100 text-pink-700 group-hover:bg-pink-500 group-hover:text-white transition-colors">
+                            ফলো করুন
+                        </span>
+                    </a>
+
+                    <!-- Facebook Direct Button -->
+                    <a href="https://www.facebook.com/search/top?q=LumonesT%20Frame" target="_blank" rel="noopener noreferrer"
+                       class="flex items-center justify-between w-full p-3.5 rounded-2xl bg-white hover:bg-sky-50 border border-sky-100 shadow-sm transition-all group">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i data-lucide="facebook" class="w-5 h-5"></i>
+                            </div>
+                            <div class="text-left">
+                                <p class="text-[11px] font-semibold text-slate-400 uppercase">Facebook পেজ</p>
+                                <p class="text-sm sm:text-base font-bold text-slate-800">LumonesT Frame</p>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-sky-100 text-sky-700 group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                            ভিজিট করুন
+                        </span>
+                    </a>
+                </div>
+
+                <!-- Footer Note -->
+                <p class="mt-6 text-xs text-slate-400 font-bangla">
+                    ✨ আপনার সুন্দর রিভিউ আমাদের ফেসবুক, ইনস্টাগ্রাম বা হোয়াটসঅ্যাপে শেয়ার করতে ভুলবেন না! ✨
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Custom Toast Notification (No alert() used) -->
+    <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 hidden">
+        <div class="bg-slate-800 text-white px-5 py-3 rounded-full shadow-xl text-xs sm:text-sm font-semibold flex items-center gap-2">
+            <i data-lucide="check-circle-2" class="w-4 h-4 text-pink-400"></i>
+            <span id="toast-message">সফলভাবে সম্পন্ন হয়েছে!</span>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Brand Constants
+        const BRAND_NAME = "Lumonest Frame";
+        const BRAND_FB = "LumonesT Frame";
+        const BRAND_WP = "01865587941";
+        const BRAND_INSTA = "lumo_nest01";
+
+        // Ready-made Bangla Quotes for Chirkut
+        const sampleQuotes = [
+            "Lumonest Frame থেকে কেনাকাটা করার জন্য আপনাকে অনেক অনেক ধন্যবাদ! আপনার এই সুন্দর পছন্দটি আমাদের পথচলাকে আরও অনুপ্রাণিত করে। আশা করি ফ্রেমটি আপনার ভীষণ ভালো লাগবে।",
+            "আপনার অর্ডারটি আমাদের জন্য ভীষণ স্পেশাল! Lumonest Frame-এর ওপর বিশ্বাস রাখার জন্য আন্তরিক কৃতজ্ঞতা। ফ্রেমটি হাতে পাওয়ার পর আপনার মূল্যবান মতামত জানাতে ভুলবেন না কিন্তু!",
+            "ভালোবাসা ও শুভেচ্ছা নেবেন! Lumonest Frame পরিবারের একজন সদস্য হওয়ার জন্য আপনাকে অসংখ্য ধন্যবাদ। আপনার ঘর ও প্রিয় মুহূর্তগুলো যেন এই ফ্রেমের মতোই সুন্দর হয়ে ওঠে।"
+        ];
+        let quoteIndex = 0;
+
+        // QR Code Instance
+        let qrCodeObj = null;
+
+        // Check URL Parameters on Page Load
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const customerName = urlParams.get('n');
+            const customerNote = urlParams.get('m');
+
+            // Load saved custom logo if available in localStorage
+            const savedLogo = localStorage.getItem('lumo_nest_custom_logo');
+            if (savedLogo) {
+                applyCustomLogo(savedLogo);
+            }
+
+            if (customerName || customerNote) {
+                // Scanned from QR! Open directly in Customer View
+                if (customerName) {
+                    document.getElementById('input-name').value = customerName;
+                    document.getElementById('display-customer-name').textContent = customerName;
+                }
+                if (customerNote) {
+                    document.getElementById('input-note').value = customerNote;
+                    document.getElementById('display-customer-note').textContent = customerNote;
+                }
+                switchMode('customer', true);
+            } else {
+                // Default Creator Studio Mode
+                updateAll();
+            }
+        });
+
+        // Switch between Creator Mode and Customer Card View
+        function switchMode(mode, triggerConfetti = false) {
+            const creatorView = document.getElementById('creator-view');
+            const customerView = document.getElementById('customer-view');
+            const btnCreator = document.getElementById('btn-mode-creator');
+            const btnPreview = document.getElementById('btn-mode-preview');
+
+            if (mode === 'customer') {
+                updatePreviewTexts();
+                creatorView.classList.add('hidden');
+                customerView.classList.remove('hidden');
+
+                btnPreview.className = "px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all bg-gradient-to-r from-sky-400 to-pink-400 text-white shadow-sm";
+                btnCreator.className = "px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all bg-white/80 text-slate-600 hover:bg-white border border-pink-100";
+
+                if (triggerConfetti && typeof confetti === 'function') {
+                    confetti({
+                        particleCount: 65,
+                        spread: 70,
+                        origin: { y: 0.6 },
+                        colors: ['#38BDF8', '#F472B6', '#FDE047']
+                    });
+                }
+            } else {
+                customerView.classList.add('hidden');
+                creatorView.classList.remove('hidden');
+
+                btnCreator.className = "px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all bg-gradient-to-r from-sky-400 to-pink-400 text-white shadow-sm";
+                btnPreview.className = "px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all bg-white/80 text-slate-600 hover:bg-white border border-pink-100";
+                updateAll();
+            }
+        }
+
+        // Build Shareable URL with Customer Name & Chirkut
+        function getShareableURL() {
+            const name = document.getElementById('input-name').value.trim() || "প্রিয় কাস্টমার";
+            const note = document.getElementById('input-note').value.trim();
+
+            const baseUrl = window.location.origin + window.location.pathname;
+            const url = new URL(baseUrl);
+            url.searchParams.set('n', name);
+            url.searchParams.set('m', note);
+            return url.toString();
+        }
+
+        // Update Preview Text & Regenerate QR Code
+        function updateAll() {
+            updatePreviewTexts();
+            generateQRCode();
+        }
+
+        function updatePreviewTexts() {
+            const name = document.getElementById('input-name').value.trim() || "প্রিয় কাস্টমার";
+            const note = document.getElementById('input-note').value.trim() || "Lumonest Frame-এর সাথে থাকার জন্য ধন্যবাদ!";
+
+            document.getElementById('display-customer-name').textContent = name;
+            document.getElementById('display-customer-note').textContent = note;
+        }
+
+        // Generate QR Code using QRCode.js
+        function generateQRCode() {
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = "";
+            const shareUrl = getShareableURL();
+
+            qrCodeObj = new QRCode(qrContainer, {
+                text: shareUrl,
+                width: 200,
+                height: 200,
+                colorDark: "#0f172a", // Deep slate for high scan reliability
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+
+        // Set Random Ready-Made Chirkut
+        function setRandomQuote() {
+            quoteIndex = (quoteIndex + 1) % sampleQuotes.length;
+            document.getElementById('input-note').value = sampleQuotes[quoteIndex];
+            updateAll();
+            showToast("নতুন চিরকুট বসানো হয়েছে!");
+        }
+
+        // Handle Custom Logo Upload
+        function handleLogoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const dataUrl = e.target.result;
+                try {
+                    localStorage.setItem('lumo_nest_custom_logo', dataUrl);
+                } catch (err) {
+                    // Ignore storage quota errors if image is very large
+                }
+                applyCustomLogo(dataUrl);
+                showToast("আপনার লোগো যুক্ত হয়েছে!");
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function applyCustomLogo(dataUrl) {
+            document.getElementById('default-svg-logo').classList.add('hidden');
+            const imgEl = document.getElementById('custom-img-logo');
+            imgEl.src = dataUrl;
+            imgEl.classList.remove('hidden');
+            document.getElementById('reset-logo-btn').classList.remove('hidden');
+        }
+
+        function resetLogo() {
+            localStorage.removeItem('lumo_nest_custom_logo');
+            document.getElementById('custom-img-logo').classList.add('hidden');
+            document.getElementById('default-svg-logo').classList.remove('hidden');
+            document.getElementById('reset-logo-btn').classList.add('hidden');
+            document.getElementById('logo-upload').value = "";
+            showToast("ডিফল্ট লোগো ফিরিয়ে আনা হয়েছে!");
+        }
+
+        // Download Styled QR Code Card as PNG (Ready to print and put inside parcel)
+        function downloadStyledQRCard() {
+            const qrCanvas = document.querySelector('#qrcode canvas');
+            if (!qrCanvas) {
+                showToast("QR কোড তৈরি হচ্ছে, একটু অপেক্ষা করুন...");
+                return;
+            }
+
+            const customerName = document.getElementById('input-name').value.trim() || "Valued Customer";
+
+            // Create a high-res printable sticker canvas
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 600;
+            canvas.height = 760;
+
+            // Background Sky Blue to Pink Gradient
+            const grad = ctx.createLinearGradient(0, 0, 600, 760);
+            grad.addColorStop(0, '#E0F2FE');
+            grad.addColorStop(0.5, '#FDF2F8');
+            grad.addColorStop(1, '#FCE7F3');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 600, 760);
+
+            // White Inner Card with Rounded Corners
+            ctx.fillStyle = '#FFFFFF';
+            roundRect(ctx, 40, 40, 520, 680, 36);
+            ctx.fill();
+
+            // Border around inner card
+            ctx.strokeStyle = '#F9A8D4';
+            ctx.lineWidth = 4;
+            roundRect(ctx, 40, 40, 520, 680, 36);
+            ctx.stroke();
+
+            // Brand Header
+            ctx.fillStyle = '#0284C7';
+            ctx.font = 'bold 34px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Lumonest Frame', 300, 115);
+
+            // Subtitle
+            ctx.fillStyle = '#DB2777';
+            ctx.font = '600 20px sans-serif';
+            ctx.fillText('A Special Note For You ✨', 300, 152);
+
+            // Draw QR Code in Center
+            ctx.drawImage(qrCanvas, 150, 185, 300, 300);
+
+            // Scan Instruction
+            ctx.fillStyle = '#334155';
+            ctx.font = 'bold 22px sans-serif';
+            ctx.fillText('Scan QR to Read Your Letter', 300, 535);
+
+            // Customer Name Tag
+            ctx.fillStyle = '#0369A1';
+            ctx.font = 'bold 24px sans-serif';
+            ctx.fillText('For: ' + customerName, 300, 580);
+
+            // Footer Socials
+            ctx.fillStyle = '#64748B';
+            ctx.font = '600 16px sans-serif';
+            ctx.fillText('FB: LumonesT Frame  |  IG: @lumo_nest01', 300, 645);
+            ctx.fillText('WhatsApp: 01865587941', 300, 672);
+
+            // Trigger Download
+            const link = document.createElement('a');
+            const safeFileName = customerName.replace(/[^a-zA-Z0-9\u0980-\u09FF]/g, '_');
+            link.download = `LumonestFrame_QR_${safeFileName}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+
+            showToast("QR স্টিকার ডাউনলোড হয়েছে!");
+        }
+
+        // Helper for Canvas Rounded Rectangle
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        // Copy Link using document.execCommand('copy')
+        function copyShareLink() {
+            const url = getShareableURL();
+            const tempInput = document.createElement('textarea');
+            tempInput.value = url;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            showToast("কার্ডের লিংক কপি হয়েছে!");
+        }
+
+        // Toast Notification Helper
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
